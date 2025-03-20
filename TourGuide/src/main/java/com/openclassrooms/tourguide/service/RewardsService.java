@@ -12,6 +12,7 @@ import rewardCentral.RewardCentral;
 import com.openclassrooms.tourguide.user.User;
 import com.openclassrooms.tourguide.user.UserReward;
 
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Service
@@ -80,5 +81,11 @@ public class RewardsService {
         double statuteMiles = STATUTE_MILES_PER_NAUTICAL_MILE * nauticalMiles;
         return statuteMiles;
 	}
+	public double getDistance(Attraction attraction, Location location) {
+		return getDistance(new Location(attraction.latitude, attraction.longitude), location);
+	}
 
+	public int getRewardPoints(Attraction attraction, UUID userId) {
+		return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, userId);
+	}
 }
