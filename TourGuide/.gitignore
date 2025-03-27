@@ -6,3 +6,10 @@
 
 # Maven build directory
 target/
+mvnw
+mvnw.cmd
+.mvn/
+
+# Logs
+logs/
+*.log
