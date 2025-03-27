@@ -1,5 +1,6 @@
 package com.openclassrooms.tourguide.service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import com.openclassrooms.tourguide.user.User;
 import com.openclassrooms.tourguide.user.UserReward;
 
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Service
@@ -42,7 +44,7 @@ public class RewardsService {
 	public void calculateRewards(User user) {
 		List<VisitedLocation> userLocations = new CopyOnWriteArrayList<>(user.getVisitedLocations());
 		List<Attraction> attractions = gpsUtil.getAttractions();
-		
+
 		for(VisitedLocation visitedLocation : userLocations) {
 			for(Attraction attraction : attractions) {
 				synchronized (user){
@@ -55,7 +57,24 @@ public class RewardsService {
 			}
 		}
 	}
-	
+	public void calculateAllRewards(List<User> users) {
+		List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+		for(User user : users) {
+			CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+				calculateRewards(user);
+			});
+			futures.add(future);
+		}
+
+		// Wait for all task to be done
+		CompletableFuture<Void> allFutures = CompletableFuture.allOf(
+				futures.toArray(new CompletableFuture[0])
+		);
+
+		// Block until all task are done
+		allFutures.join();
+	}
 	public boolean isWithinAttractionProximity(Attraction attraction, Location location) {
 		return getDistance(attraction, location) > attractionProximityRange ? false : true;
 	}
