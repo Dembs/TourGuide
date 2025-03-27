@@ -1,9 +1,9 @@
 # Déclenche la pipeline sur push ou pull request sur la branche main
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
 
 jobs:
   build:
