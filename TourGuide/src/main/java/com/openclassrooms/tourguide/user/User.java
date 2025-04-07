@@ -5,8 +5,13 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import gpsUtil.location.Attraction;
 import gpsUtil.location.VisitedLocation;
 import tripPricer.Provider;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class User {
 	private final UUID userId;
@@ -14,10 +19,11 @@ public class User {
 	private String phoneNumber;
 	private String emailAddress;
 	private Date latestLocationTimestamp;
-	private List<VisitedLocation> visitedLocations = new ArrayList<>();
-	private List<UserReward> userRewards = new ArrayList<>();
+	private List<VisitedLocation> visitedLocations = new CopyOnWriteArrayList<>();
+	private final ConcurrentMap<UUID, UserReward> userRewards = new ConcurrentHashMap<>();
 	private UserPreferences userPreferences = new UserPreferences();
 	private List<Provider> tripDeals = new ArrayList<>();
+
 	public User(UUID userId, String userName, String phoneNumber, String emailAddress) {
 		this.userId = userId;
 		this.userName = userName;
@@ -59,26 +65,39 @@ public class User {
 	
 	public void addToVisitedLocations(VisitedLocation visitedLocation) {
 		visitedLocations.add(visitedLocation);
+		setLatestLocationTimestamp(visitedLocation.timeVisited);
 	}
 	
 	public List<VisitedLocation> getVisitedLocations() {
-		return visitedLocations;
+		return new ArrayList<>(visitedLocations);
 	}
 	
 	public void clearVisitedLocations() {
 		visitedLocations.clear();
 	}
-	
+
 	public void addUserReward(UserReward userReward) {
-		if(userRewards.stream().filter(r -> r.attraction.attractionName.equals(userReward.attraction)).count() == 0) {
-			userRewards.add(userReward);
+		if (userReward != null && userReward.attraction != null) {
+			userRewards.putIfAbsent(userReward.attraction.attractionId, userReward);
 		}
 	}
 	
 	public List<UserReward> getUserRewards() {
-		return userRewards;
+		return new ArrayList<>(userRewards.values());
 	}
-	
+
+	public boolean hasRewardForAttraction(Attraction attraction) {
+		return attraction != null && userRewards.containsKey(attraction.attractionId);
+	}
+
+	public UserReward getReward(UUID attractionId) {
+		return userRewards.get(attractionId);
+	}
+
+	public Set<UUID> getRewardedAttractionIds() {
+		return userRewards.keySet();
+	}
+
 	public UserPreferences getUserPreferences() {
 		return userPreferences;
 	}
@@ -88,7 +107,7 @@ public class User {
 	}
 
 	public VisitedLocation getLastVisitedLocation() {
-		return visitedLocations.get(visitedLocations.size() - 1);
+		return visitedLocations.isEmpty() ? null : visitedLocations.get(visitedLocations.size() - 1);
 	}
 	
 	public void setTripDeals(List<Provider> tripDeals) {

@@ -91,7 +91,7 @@ public class TourGuideService {
 		return visitedLocation;
 	}
 
-	public void trackAllUserLocations(List<User> users) {
+	public  CompletableFuture<Void> trackAllUserLocations(List<User> users) {
 		List<CompletableFuture<Void>> futures = new ArrayList<>();
 
 		for(User user : users) {
@@ -106,8 +106,7 @@ public class TourGuideService {
 				futures.toArray(new CompletableFuture[0])
 		);
 
-		// Block until all task are done
-		allFutures.join();
+		return allFutures;
 	}
 
 	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
