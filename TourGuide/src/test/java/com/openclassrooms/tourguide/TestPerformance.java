@@ -63,7 +63,7 @@ public class TestPerformance {
 		gpsUtil = new GpsUtil();
 		rewardCentral = new RewardCentral();
 		rewardsService = new RewardsService(gpsUtil, rewardCentral);
-		InternalTestHelper.setInternalUserNumber(100);
+		InternalTestHelper.setInternalUserNumber(1000);
 		tourGuideService = new TourGuideService(gpsUtil, rewardsService);
 		
 		if (tourGuideService.tracker != null) {
@@ -107,7 +107,6 @@ public class TestPerformance {
 		int userCount = allUsers.size();
 
 		allUsers.forEach(u -> {
-			u.clearVisitedLocations();
 			u.addToVisitedLocations(new VisitedLocation(u.getUserId(), attraction, new Date()));
 		});
 		
@@ -121,9 +120,10 @@ public class TestPerformance {
 		allUsers.forEach(user -> rewardsService.calculateRewards(user, latch));
 
 		// Wait for all the rewards
-		boolean completed = latch.await(21, TimeUnit.MINUTES);
-		
+		latch.await();
+
 		stopWatch.stop();
+		
 		long timeInSeconds = TimeUnit.MILLISECONDS.toSeconds(stopWatch.getTime());
 		logger.info("highVolumeGetRewards: Test time : {} seconds.", timeInSeconds);
 

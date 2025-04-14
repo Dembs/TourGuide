@@ -65,7 +65,7 @@ public class RewardsService {
 		List<UserReward> userRewards = new CopyOnWriteArrayList<>(user.getUserRewards());
 		Set<Attraction> attractionsToProcess = new HashSet<>();
 
-		// Identify eligeable attractions
+		// Identify eligible attractions
 		attractions.parallelStream()
 			.filter(attraction -> userRewards.parallelStream()
 				.noneMatch(reward -> reward.attraction.attractionId.equals(attraction.attractionId)))
@@ -79,7 +79,7 @@ public class RewardsService {
 					})
 			);
 
-		// Calculate rewards
+		//Update all user rewards with reward points async
 		if (!attractionsToProcess.isEmpty()) {
 			calculateRewardPoints(attractionsToProcess, user, latch);
 		} else if (latch != null) {
@@ -88,7 +88,11 @@ public class RewardsService {
 	}
 
 	/**
-	 * Process reward points calculation asynchronously
+	 * Takes a list of attractions and updates the reward points on each attraction for the given user
+	 *
+	 * @param attractions is the list of attractions for which to calculate reward points
+	 * @param user User to update rewards for
+	 * @CountDownLatch Optional CountDownLatch for test synchronization (can be null)
 	 */
 	private void calculateRewardPoints(Set<Attraction> attractions, User user, CountDownLatch latch) {
 		CompletableFuture.runAsync(() -> {
