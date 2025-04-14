@@ -1,5 +1,6 @@
 package com.openclassrooms.tourguide.service;
 
+import com.openclassrooms.tourguide.dto.NearbyAttractionDTO;
 import com.openclassrooms.tourguide.helper.InternalTestHelper;
 import com.openclassrooms.tourguide.tracker.Tracker;
 import com.openclassrooms.tourguide.user.User;
@@ -7,14 +8,8 @@ import com.openclassrooms.tourguide.user.UserReward;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -91,19 +86,62 @@ public class TourGuideService {
 	public VisitedLocation trackUserLocation(User user) {
 		VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
 		user.addToVisitedLocations(visitedLocation);
-		rewardsService.calculateRewards(user);
+		// Calculate rewards asynch
+		CompletableFuture.runAsync(() -> rewardsService.calculateRewards(user));
 		return visitedLocation;
 	}
 
-	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
-		List<Attraction> nearbyAttractions = new ArrayList<>();
-		for (Attraction attraction : gpsUtil.getAttractions()) {
-			if (rewardsService.isWithinAttractionProximity(attraction, visitedLocation.location)) {
-				nearbyAttractions.add(attraction);
-			}
+	public  CompletableFuture<Void> trackAllUserLocations(List<User> users) {
+		List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+		for(User user : users) {
+			CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+				trackUserLocation(user);
+			});
+			futures.add(future);
 		}
 
-		return nearbyAttractions;
+		// Wait for all task to be done
+		CompletableFuture<Void> allFutures = CompletableFuture.allOf(
+				futures.toArray(new CompletableFuture[0])
+		);
+
+		return allFutures;
+	}
+
+	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
+		List<Attraction> allAttractions = gpsUtil.getAttractions();
+
+		// Filter attractions by users
+		allAttractions.sort((a1, a2) -> {
+			Double dist1 = rewardsService.getDistance(a1, visitedLocation.location);
+			Double dist2 = rewardsService.getDistance(a2, visitedLocation.location);
+			return dist1.compareTo(dist2);
+		});
+
+		// Return 5 nearby attractions
+		return allAttractions.stream().limit(5).collect(Collectors.toList());
+	}
+
+	// Attractions with necessary informations only
+	public List<NearbyAttractionDTO> getNearbyAttractionDTOs(VisitedLocation visitedLocation) {
+		List<Attraction> nearbyAttractions = getNearByAttractions(visitedLocation);
+		List<NearbyAttractionDTO> nearbyAttractionDTOs = new ArrayList<>();
+
+		for (Attraction attraction : nearbyAttractions) {
+			double distance = rewardsService.getDistance(attraction, visitedLocation.location);
+			int rewardPoints = rewardsService.getRewardPoints(attraction, visitedLocation.userId);
+
+			nearbyAttractionDTOs.add(new NearbyAttractionDTO(
+					attraction.attractionName,
+					new Location(attraction.latitude, attraction.longitude),
+					visitedLocation.location,
+					distance,
+					rewardPoints
+			));
+		}
+
+		return nearbyAttractionDTOs;
 	}
 
 	private void addShutDownHook() {
